@@ -1,7 +1,7 @@
 export const SUPPORT_EMAIL = 'marketing@inkaastudio.com';
 export const SUPPORT_WHATSAPP_NUMBER =
-  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP_NUMBER || '91YOUR_NUMBER';
-export const SUPPORT_WHATSAPP_MESSAGE = 'Hi Inkaa Team, I need help with the platform.';
+  process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP_NUMBER || '917550126497';
+export const SUPPORT_WHATSAPP_MESSAGE = 'Hello Inkaa team, I need help.';
 
 export const feedbackCategories = [
   'Feature Request',
@@ -20,7 +20,8 @@ export type TicketPriority = (typeof ticketPriorities)[number];
 export type TicketStatus = (typeof ticketStatuses)[number];
 
 export function getWhatsAppSupportUrl() {
-  return `https://wa.me/${SUPPORT_WHATSAPP_NUMBER}?text=${encodeURIComponent(SUPPORT_WHATSAPP_MESSAGE)}`;
+  const digitsOnly = SUPPORT_WHATSAPP_NUMBER.replace(/\D/g, '') || '917550126497';
+  return `https://wa.me/${digitsOnly}?text=${encodeURIComponent(SUPPORT_WHATSAPP_MESSAGE)}`;
 }
 
 export function isFeedbackCategory(value: unknown): value is FeedbackCategory {
