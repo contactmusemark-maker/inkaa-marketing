@@ -40,7 +40,7 @@ export async function POST(request: Request) {
           phone,
           role: 'admin',
           plan: 'starter',
-          subscription_status: 'active',
+          subscription_status: 'trial',
         }),
       }).catch(() => null);
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     });
 
     if (session.access_token) {
-      setSessionCookies(response, session, true, 'admin');
+      setSessionCookies(response, session, true, 'admin', 'trial', 60 * 60 * 24 * 14);
     }
 
     return response;

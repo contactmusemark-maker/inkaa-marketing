@@ -50,12 +50,37 @@ type AuditLog = {
   created_at: string;
 };
 
+type SupportTicket = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  category: string;
+  priority: string;
+  subject: string;
+  message: string;
+  status: string;
+  page_url: string | null;
+  internal_reply: string | null;
+  created_at: string;
+};
+
+type FeedbackSubmission = {
+  id: string;
+  name: string;
+  email: string;
+  category: string;
+  message: string;
+  created_at: string;
+};
+
 export default function SuperAdminPage() {
   const [data, setData] = useState<AdminUsage | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [schemaOk, setSchemaOk] = useState<boolean | null>(null);
   const [schemaDetails, setSchemaDetails] = useState<string[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [feedback, setFeedback] = useState<FeedbackSubmission[]>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -67,6 +92,7 @@ export default function SuperAdminPage() {
         fetch('/api/admin/schema-validation'),
       ]);
       const usersResponse = await fetch('/api/admin/users');
+      const supportResponse = await fetch('/api/admin/support');
 
       if (!ignore) {
         if (usageResponse.ok) {
@@ -78,6 +104,11 @@ export default function SuperAdminPage() {
           const usersData = await usersResponse.json();
           setUsers(usersData.users || []);
           setAuditLogs(usersData.auditLogs || []);
+        }
+        if (supportResponse.ok) {
+          const supportData = await supportResponse.json();
+          setTickets(supportData.tickets || []);
+          setFeedback(supportData.feedback || []);
         }
         if (schemaResponse.ok) {
           const schema = await schemaResponse.json();
@@ -105,6 +136,20 @@ export default function SuperAdminPage() {
       ignore = true;
     };
   }, []);
+
+  async function updateTicket(ticketId: string, updates: Record<string, unknown>) {
+    const response = await fetch('/api/admin/support', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticketId, ...updates }),
+    });
+
+    if (!response.ok) return;
+
+    setTickets((current) =>
+      current.map((ticket) => (ticket.id === ticketId ? { ...ticket, ...updates } : ticket))
+    );
+  }
 
   return (
     <AppLayout
@@ -168,6 +213,136 @@ export default function SuperAdminPage() {
             </ul>
           </div>
         )}
+
+        <div className="rounded-2xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-base font-semibold text-foreground">Support Tickets</h2>
+            <p className="text-xs text-muted-foreground">
+              Customer issues, bug reports, billing requests, and AI problems.
+            </p>
+          </div>
+          {!tickets.length ? (
+            <div className="p-8">
+              <EmptyState
+                title="No support tickets"
+                description="Customer support tickets will appear here."
+              />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-border text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="px-5 py-3">Issue</th>
+                    <th className="px-5 py-3">Customer</th>
+                    <th className="px-5 py-3">Priority</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3">Internal Reply</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tickets.map((ticket) => (
+                    <tr key={ticket.id} className="border-b border-border align-top last:border-0">
+                      <td className="max-w-sm px-5 py-3">
+                        <p className="font-medium text-foreground">{ticket.subject}</p>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                          {ticket.message}
+                        </p>
+                        <p className="mt-2 text-[11px] text-muted-foreground">
+                          {ticket.category} ·{' '}
+                          {new Intl.DateTimeFormat('en-IN', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          }).format(new Date(ticket.created_at))}
+                        </p>
+                      </td>
+                      <td className="px-5 py-3">
+                        <p>{ticket.name || 'Unknown'}</p>
+                        <p className="text-xs text-muted-foreground">{ticket.email}</p>
+                      </td>
+                      <td className="px-5 py-3">
+                        <select
+                          className="input-field min-w-28 py-1 text-xs"
+                          value={ticket.priority}
+                          onChange={(event) =>
+                            updateTicket(ticket.id, { priority: event.target.value })
+                          }
+                        >
+                          {['Low', 'Medium', 'High', 'Urgent'].map((priority) => (
+                            <option key={priority}>{priority}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-5 py-3">
+                        <select
+                          className="input-field min-w-32 py-1 text-xs"
+                          value={ticket.status}
+                          onChange={(event) =>
+                            updateTicket(ticket.id, { status: event.target.value })
+                          }
+                        >
+                          {['Open', 'In Progress', 'Resolved', 'Closed'].map((status) => (
+                            <option key={status}>{status}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-5 py-3">
+                        <textarea
+                          className="input-field min-w-56 resize-none text-xs"
+                          rows={2}
+                          defaultValue={ticket.internal_reply || ''}
+                          onBlur={(event) =>
+                            updateTicket(ticket.id, { internalReply: event.target.value })
+                          }
+                          placeholder="Internal note or reply"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border px-5 py-4">
+            <h2 className="text-base font-semibold text-foreground">Feedback Inbox</h2>
+            <p className="text-xs text-muted-foreground">
+              Product ideas and general feedback from customers.
+            </p>
+          </div>
+          {!feedback.length ? (
+            <div className="p-8">
+              <EmptyState
+                title="No feedback yet"
+                description="Customer feedback submissions will appear here."
+              />
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {feedback.slice(0, 10).map((item) => (
+                <div key={item.id} className="px-5 py-4">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="font-medium text-foreground">{item.category}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.name} · {item.email}
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {new Intl.DateTimeFormat('en-IN', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      }).format(new Date(item.created_at))}
+                    </p>
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.message}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="rounded-2xl border border-border bg-card shadow-sm">
           <div className="border-b border-border px-5 py-4">

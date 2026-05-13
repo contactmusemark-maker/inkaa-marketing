@@ -1,0 +1,19 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#f7f5f2"/>
+  <circle cx="972" cy="72" r="320" fill="#d64238" opacity="0.14"/>
+  <circle cx="186" cy="542" r="260" fill="#d64238" opacity="0.10"/>
+  <rect x="78" y="72" width="1044" height="486" rx="44" fill="white" fill-opacity="0.58" stroke="white" stroke-width="2"/>
+  <rect x="126" y="122" width="56" height="56" rx="16" fill="#d64238"/>
+  <text x="148" y="162" fill="white" font-family="Arial, sans-serif" font-weight="800" font-size="42">i</text>
+  <text x="204" y="162" fill="#111111" font-family="Arial, sans-serif" font-weight="800" font-size="42">Inkaa Marketing</text>
+  <text x="126" y="276" fill="#111111" font-family="Arial, sans-serif" font-weight="900" font-size="64">AI-powered CRM</text>
+  <text x="126" y="350" fill="#111111" font-family="Arial, sans-serif" font-weight="900" font-size="64">for marketing agencies.</text>
+  <text x="126" y="420" fill="#5f5f5f" font-family="Arial, sans-serif" font-size="30">Clients, CRM, proposals, campaigns, invoices, payments, and AI workflows in one platform.</text>
+  <rect x="762" y="210" width="282" height="230" rx="28" fill="#111111" fill-opacity="0.06"/>
+  <rect x="794" y="246" width="112" height="14" rx="7" fill="#d64238"/>
+  <rect x="794" y="286" width="204" height="14" rx="7" fill="#111111" fill-opacity="0.18"/>
+  <rect x="794" y="326" width="168" height="14" rx="7" fill="#111111" fill-opacity="0.14"/>
+  <rect x="794" y="366" width="220" height="14" rx="7" fill="#111111" fill-opacity="0.12"/>
+  <rect x="126" y="474" width="214" height="54" rx="18" fill="#d64238"/>
+  <text x="156" y="510" fill="white" font-family="Arial, sans-serif" font-weight="800" font-size="20">Start Free Trial</text>
+</svg>

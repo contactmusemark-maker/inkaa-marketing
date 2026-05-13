@@ -8,7 +8,9 @@ export function setSessionCookies(
   response: NextResponse,
   session: AuthSession,
   hasSubscription = false,
-  role = 'member'
+  role = 'member',
+  subscriptionStatus = 'active',
+  subscriptionMaxAge = COOKIE_MAX_AGE
 ) {
   response.cookies.set('inkaa_auth', session.access_token, {
     httpOnly: true,
@@ -24,12 +26,12 @@ export function setSessionCookies(
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
       path: '/',
-      maxAge: COOKIE_MAX_AGE,
+      maxAge: subscriptionMaxAge,
     });
   }
 
   if (hasSubscription) {
-    response.cookies.set('inkaa_subscription', 'active', {
+    response.cookies.set('inkaa_subscription', subscriptionStatus, {
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',

@@ -1,14 +1,38 @@
 import type { MetadataRoute } from 'next';
+import { siteUrl } from '@/lib/seo';
 
 export default function robots(): MetadataRoute.Robots {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://inkaa.in';
-
   return {
-    rules: {
-      userAgent: '*',
-      allow: '/',
-      disallow: ['/api/', '/dashboard/', '/client-management/', '/settings/'],
-    },
+    rules: [
+      {
+        userAgent: '*',
+        allow: ['/', '/features', '/pricing', '/contact', '/login', '/signup'],
+        disallow: [
+          '/api/',
+          '/dashboard/',
+          '/client-management/',
+          '/crm/',
+          '/projects/',
+          '/quotations/',
+          '/invoices/',
+          '/payments/',
+          '/analytics/',
+          '/ai-tools/',
+          '/reports/',
+          '/team/',
+          '/tasks/',
+          '/calendar/',
+          '/documents/',
+          '/settings/',
+          '/billing/',
+          '/integrations/',
+          '/super-admin/',
+          '/auth/',
+          '/api/auth/',
+          '/sign-up-login?callbackUrl=',
+        ],
+      },
+    ],
     sitemap: `${siteUrl}/sitemap.xml`,
   };
 }

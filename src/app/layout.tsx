@@ -2,6 +2,8 @@ import React from 'react';
 import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import { Providers } from '@/components/Providers';
+import WhatsAppSupportButton from '@/components/support/WhatsAppSupportButton';
+import { createSeoMetadata, organizationJsonLd, softwareJsonLd, websiteJsonLd } from '@/lib/seo';
 import '../styles/tailwind.css';
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -17,23 +19,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Inkaa — Digital Marketing Agency Platform',
-  description:
-    'Inkaa helps digital marketing agencies manage clients, projects, invoices, CRM pipeline, and team from one powerful dashboard.',
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://inkaa.in'),
-  openGraph: {
-    title: 'Inkaa — Digital Marketing Agency Platform',
-    description:
-      'Manage clients, projects, invoices, CRM, AI workflows, and teams from one digital marketing agency platform.',
-    type: 'website',
-    siteName: 'Inkaa',
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Inkaa — Digital Marketing Agency Platform',
-    description:
-      'A SaaS platform for digital marketing agencies to manage operations and AI workflows.',
-  },
+  ...createSeoMetadata(),
+  applicationName: 'Inkaa Marketing',
+  authors: [{ name: 'Inkaa Studio', url: 'https://marketing.inkaastudio.com' }],
+  creator: 'Inkaa Studio',
+  publisher: 'Inkaa Studio',
+  category: 'Marketing Software',
   icons: {
     icon: [{ url: '/favicon.png', type: 'image/png' }],
   },
@@ -43,7 +34,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={plusJakartaSans.variable}>
       <body className={plusJakartaSans.className}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify([organizationJsonLd, websiteJsonLd, softwareJsonLd]),
+          }}
+        />
         <Providers>{children}</Providers>
+        <WhatsAppSupportButton />
       </body>
     </html>
   );

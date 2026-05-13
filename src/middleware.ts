@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getAllowedRolesForPath, normalizeRole } from '@/lib/rbacCore';
 
-// Protected routes that require both auth AND subscription
+// Protected routes require auth. Most product routes also require an active subscription/trial.
 const PROTECTED_PREFIXES = [
   '/profile',
   '/help',
@@ -28,8 +28,18 @@ const PROTECTED_PREFIXES = [
   '/super-admin',
 ];
 
+const SUBSCRIPTION_REQUIRED_PREFIXES = PROTECTED_PREFIXES.filter(
+  (prefix) => !['/billing', '/help', '/profile', '/super-admin'].includes(prefix)
+);
+
 function isProtectedRoute(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
+  );
+}
+
+function requiresSubscription(pathname: string): boolean {
+  return SUBSCRIPTION_REQUIRED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(prefix + '/')
   );
 }
@@ -72,7 +82,7 @@ export function middleware(request: NextRequest) {
   }
 
   // If authenticated but no subscription and trying to access protected dashboard routes → redirect to plans
-  if (isProtectedRoute(pathname) && authToken && !hasSubscription) {
+  if (requiresSubscription(pathname) && authToken && !hasSubscription) {
     return NextResponse.redirect(new URL('/plans', request.url));
   }
 

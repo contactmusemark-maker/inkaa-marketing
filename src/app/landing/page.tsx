@@ -54,18 +54,20 @@ const _features = [
 const plans = [
   {
     name: 'Starter',
-    price: '₹2,999',
+    price: '₹1,999',
+    annual: '₹19,999/year · save ₹3,989',
     period: '/month',
-    desc: 'Perfect for solo consultants and small agencies.',
-    features: ['5 Clients', '3 Team Members', 'Basic CRM', 'GST Invoicing', 'Email Support'],
+    desc: 'For lean Indian agencies starting with client operations and AI.',
+    features: ['5 Clients', '3 Team Members', 'Basic CRM', 'GST Invoicing', 'Razorpay Billing'],
     cta: 'Start Free Trial',
     highlight: false,
   },
   {
     name: 'Pro',
-    price: '₹7,999',
+    price: '₹4,999',
+    annual: '₹49,999/year · save ₹9,989',
     period: '/month',
-    desc: 'For growing agencies managing multiple clients.',
+    desc: 'For growing Indian agencies managing retainers, campaigns, and teams.',
     features: [
       '25 Clients',
       '10 Team Members',
@@ -79,9 +81,10 @@ const plans = [
   },
   {
     name: 'Agency',
-    price: '₹19,999',
+    price: '₹9,999',
+    annual: '₹99,999/year · save ₹19,989',
     period: '/month',
-    desc: 'Enterprise-grade for large agencies and white-label.',
+    desc: 'For full-service agencies scaling delivery, AI, and reporting.',
     features: [
       'Unlimited Clients',
       'Unlimited Team',
@@ -1147,6 +1150,7 @@ export default function LandingPage() {
                 <div className="mb-6">
                   <span className="text-4xl font-extrabold text-[#111111]">{plan.price}</span>
                   <span className="text-sm text-[#5f5f5f]">{plan.period}</span>
+                  <p className="mt-2 text-xs font-bold text-[#d64238]">{plan.annual}</p>
                 </div>
                 <ul className="space-y-2.5 mb-7">
                   {plan.features.map((f) => (

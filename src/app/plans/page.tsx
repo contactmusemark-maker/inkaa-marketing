@@ -11,10 +11,11 @@ const plans = [
   {
     id: 'starter' as const,
     name: 'Starter',
-    price: '₹2,999',
-    priceNum: 2999,
+    price: '₹1,999',
+    priceNum: 1999,
+    annualPrice: 19999,
     period: '/month',
-    desc: 'Perfect for solo consultants and small agencies just getting started.',
+    desc: 'For lean Indian agencies starting with client operations, invoices, and AI.',
     features: [
       '5 Clients',
       '3 Team Members',
@@ -29,10 +30,11 @@ const plans = [
   {
     id: 'pro' as const,
     name: 'Pro',
-    price: '₹7,999',
-    priceNum: 7999,
+    price: '₹4,999',
+    priceNum: 4999,
+    annualPrice: 49999,
     period: '/month',
-    desc: 'For growing agencies managing multiple clients and campaigns.',
+    desc: 'For growing Indian agencies managing retainers, campaigns, and teams.',
     features: [
       '25 Clients',
       '10 Team Members',
@@ -48,10 +50,11 @@ const plans = [
   {
     id: 'agency' as const,
     name: 'Agency',
-    price: '₹19,999',
-    priceNum: 19999,
+    price: '₹9,999',
+    priceNum: 9999,
+    annualPrice: 99999,
     period: '/month',
-    desc: 'Enterprise-grade for large agencies and white-label resellers.',
+    desc: 'For full-service agencies scaling delivery, AI, reporting, and white-label work.',
     features: [
       'Unlimited Clients',
       'Unlimited Team Members',
@@ -85,7 +88,7 @@ export default function PlansPage() {
       const response = await fetch('/api/subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: selectedPlan, billingCycle: billing }),
+        body: JSON.stringify({ action: 'start_trial', plan: selectedPlan, billingCycle: billing }),
       });
       const result = await response.json();
 
@@ -101,6 +104,7 @@ export default function PlansPage() {
   };
 
   const selectedPlanDetails = plans.find((p) => p.id === selectedPlan);
+  const formatINR = (amount: number) => `₹${amount.toLocaleString('en-IN')}`;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -162,7 +166,7 @@ export default function PlansPage() {
               <span
                 className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${billing === 'annual' ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700'}`}
               >
-                Save 20%
+                Save annually
               </span>
             </button>
           </div>
@@ -214,14 +218,14 @@ export default function PlansPage() {
               <p className="text-xs text-slate-500 mb-4 leading-relaxed">{plan?.desc}</p>
               <div className="mb-5">
                 <span className="text-3xl font-extrabold text-[#0F172A]">
-                  {billing === 'annual'
-                    ? `₹${Math.round(plan?.priceNum * 0.8)?.toLocaleString('en-IN')}`
-                    : plan?.price}
+                  {billing === 'annual' ? formatINR(plan.annualPrice) : plan?.price}
                 </span>
-                <span className="text-sm text-slate-500">{plan?.period}</span>
+                <span className="text-sm text-slate-500">
+                  {billing === 'annual' ? '/year' : plan?.period}
+                </span>
                 {billing === 'annual' && (
                   <p className="text-xs text-green-600 font-medium mt-0.5">
-                    Billed annually · Save 20%
+                    Billed annually · Save {formatINR(plan.priceNum * 12 - plan.annualPrice)}
                   </p>
                 )}
               </div>
@@ -253,9 +257,9 @@ export default function PlansPage() {
               <span className="font-bold text-[#0F172A]">
                 {selectedPlanDetails?.name} —{' '}
                 {billing === 'annual'
-                  ? `₹${Math.round((selectedPlanDetails?.priceNum ?? 0) * 0.8)?.toLocaleString('en-IN')}`
+                  ? formatINR(selectedPlanDetails?.annualPrice ?? 0)
                   : selectedPlanDetails?.price}
-                /mo
+                {billing === 'annual' ? '/yr' : '/mo'}
               </span>
             </div>
             <div className="flex items-center justify-between text-sm">

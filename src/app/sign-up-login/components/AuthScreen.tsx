@@ -6,8 +6,12 @@ import RegisterForm from './RegisterForm';
 import AppLogo from '@/components/ui/AppLogo';
 import Icon from '@/components/ui/AppIcon';
 
-export default function AuthScreen() {
-  const [tab, setTab] = useState<'login' | 'register'>('login');
+export default function AuthScreen({
+  initialTab = 'login',
+}: {
+  initialTab?: 'login' | 'register';
+}) {
+  const [tab, setTab] = useState<'login' | 'register'>(initialTab);
 
   return (
     <div className="min-h-screen flex bg-background">

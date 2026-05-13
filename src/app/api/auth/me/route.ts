@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { resolveSubscriptionStatus } from '@/lib/billing';
 import { formatRole, normalizeRole } from '@/lib/rbacCore';
-import { getAuthToken, getCurrentUser, getProfile } from '@/lib/supabase';
+import { getAuthToken, getCurrentUser, getProfile, supabaseFetch } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   const token = getAuthToken(request);
@@ -12,6 +13,16 @@ export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser(token);
     const profile = await getProfile(token, user.id).catch(() => null);
+    const subscriptions = await supabaseFetch<
+      { status: string | null; trial_ends_at: string | null }[]
+    >(
+      `/rest/v1/subscriptions?user_id=eq.${encodeURIComponent(user.id)}&select=status,trial_ends_at&limit=1`,
+      { token }
+    ).catch(() => []);
+    const subscriptionStatus = resolveSubscriptionStatus(
+      subscriptions[0]?.status ?? profile?.subscription_status,
+      subscriptions[0]?.trial_ends_at
+    );
     const role = normalizeRole(profile?.role);
 
     return NextResponse.json({
@@ -23,9 +34,9 @@ export async function GET(request: NextRequest) {
         role,
         roleLabel: formatRole(role),
         plan: profile?.plan ?? 'starter',
-        subscriptionStatus: profile?.subscription_status ?? 'trial',
+        subscriptionStatus,
       },
-      hasSubscription: profile?.subscription_status === 'active',
+      hasSubscription: ['active', 'trial'].includes(subscriptionStatus),
     });
   } catch (error) {
     return NextResponse.json(

@@ -10,7 +10,7 @@ create table if not exists public.profiles (
   avatar_url text,
   role text not null default 'admin',
   plan text default 'starter',
-  subscription_status text not null default 'active',
+  subscription_status text not null default 'trial',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -40,13 +40,18 @@ create table if not exists public.subscriptions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade unique,
   plan text not null default 'starter',
-  status text not null default 'active',
+  status text not null default 'trial',
   billing_cycle text not null default 'monthly',
   ai_limit integer default 20,
   ai_used integer not null default 0,
   current_period_start timestamptz not null default date_trunc('month', now()),
   current_period_end timestamptz not null default (date_trunc('month', now()) + interval '1 month'),
+  trial_started_at timestamptz,
+  trial_ends_at timestamptz,
+  next_billing_at timestamptz,
+  cancel_at timestamptz,
   razorpay_customer_id text,
+  razorpay_plan_id text,
   razorpay_subscription_id text,
   razorpay_payment_id text,
   created_at timestamptz not null default now(),
@@ -94,21 +99,94 @@ create table if not exists public.admin_audit_logs (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.subscription_payments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  plan text not null,
+  billing_cycle text not null default 'monthly',
+  amount integer not null default 0,
+  currency text not null default 'INR',
+  status text not null default 'created',
+  razorpay_subscription_id text,
+  razorpay_payment_id text,
+  paid_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.billing_invoices (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  invoice_number text not null unique,
+  plan text not null,
+  billing_cycle text not null default 'monthly',
+  amount integer not null default 0,
+  currency text not null default 'INR',
+  status text not null default 'created',
+  razorpay_payment_id text,
+  invoice_url text,
+  issued_at timestamptz not null default now(),
+  due_at timestamptz,
+  paid_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.feedback_submissions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  name text not null,
+  email text not null,
+  category text not null,
+  message text not null,
+  screenshot_path text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.support_tickets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  name text,
+  email text,
+  category text not null default 'Bug Report',
+  priority text not null default 'Medium',
+  subject text not null,
+  message text not null,
+  status text not null default 'Open',
+  page_url text,
+  browser_info text,
+  device_info text,
+  screenshot_path text,
+  internal_reply text,
+  replied_by uuid references auth.users(id) on delete set null,
+  replied_at timestamptz,
+  resolved_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists subscription_payments_razorpay_payment_id_key
+  on public.subscription_payments(razorpay_payment_id)
+  where razorpay_payment_id is not null;
+
 alter table public.subscriptions add column if not exists billing_cycle text not null default 'monthly';
 alter table public.subscriptions add column if not exists ai_limit integer default 20;
 alter table public.subscriptions add column if not exists ai_used integer not null default 0;
 alter table public.subscriptions add column if not exists current_period_start timestamptz not null default date_trunc('month', now());
 alter table public.subscriptions add column if not exists current_period_end timestamptz not null default (date_trunc('month', now()) + interval '1 month');
+alter table public.subscriptions add column if not exists trial_started_at timestamptz;
+alter table public.subscriptions add column if not exists trial_ends_at timestamptz;
+alter table public.subscriptions add column if not exists next_billing_at timestamptz;
+alter table public.subscriptions add column if not exists cancel_at timestamptz;
 alter table public.subscriptions add column if not exists razorpay_customer_id text;
+alter table public.subscriptions add column if not exists razorpay_plan_id text;
 alter table public.subscriptions add column if not exists razorpay_subscription_id text;
 alter table public.subscriptions add column if not exists razorpay_payment_id text;
 alter table public.profiles alter column role set default 'admin';
 alter table public.profiles add column if not exists email text;
 alter table public.profiles add column if not exists avatar_url text;
 alter table public.profiles alter column plan set default 'starter';
-alter table public.profiles alter column subscription_status set default 'active';
+alter table public.profiles alter column subscription_status set default 'trial';
 alter table public.subscriptions alter column plan set default 'starter';
-alter table public.subscriptions alter column status set default 'active';
+alter table public.subscriptions alter column status set default 'trial';
 alter table public.subscriptions alter column billing_cycle set default 'monthly';
 alter table public.subscriptions alter column ai_limit set default 20;
 alter table public.subscriptions alter column ai_used set default 0;
@@ -141,6 +219,10 @@ alter table public.subscriptions enable row level security;
 alter table public.ai_generations enable row level security;
 alter table public.ai_usage_logs enable row level security;
 alter table public.admin_audit_logs enable row level security;
+alter table public.subscription_payments enable row level security;
+alter table public.billing_invoices enable row level security;
+alter table public.feedback_submissions enable row level security;
+alter table public.support_tickets enable row level security;
 
 drop policy if exists "Users can read own profile" on public.profiles;
 create policy "Users can read own profile"
@@ -227,6 +309,60 @@ create policy "Super admins can read admin audit logs"
     )
   );
 
+drop policy if exists "Users can read own subscription payments" on public.subscription_payments;
+create policy "Users can read own subscription payments"
+  on public.subscription_payments for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can read own billing invoices" on public.billing_invoices;
+create policy "Users can read own billing invoices"
+  on public.billing_invoices for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own support tickets" on public.support_tickets;
+create policy "Users can insert own support tickets"
+  on public.support_tickets for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Users can read own support tickets" on public.support_tickets;
+create policy "Users can read own support tickets"
+  on public.support_tickets for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "Users can insert own feedback" on public.feedback_submissions;
+create policy "Users can insert own feedback"
+  on public.feedback_submissions for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "Super admins can manage support tickets" on public.support_tickets;
+create policy "Super admins can manage support tickets"
+  on public.support_tickets for all
+  using (
+    exists (
+      select 1 from public.profiles
+      where profiles.id = auth.uid()
+        and profiles.role = 'super_admin'
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.profiles
+      where profiles.id = auth.uid()
+        and profiles.role = 'super_admin'
+    )
+  );
+
+drop policy if exists "Super admins can read feedback" on public.feedback_submissions;
+create policy "Super admins can read feedback"
+  on public.feedback_submissions for select
+  using (
+    exists (
+      select 1 from public.profiles
+      where profiles.id = auth.uid()
+        and profiles.role = 'super_admin'
+    )
+  );
+
 create or replace function public.validate_inkaa_schema()
 returns table(missing_table text, missing_column text)
 language sql
@@ -274,7 +410,12 @@ as $$
       ('subscriptions', 'ai_used'),
       ('subscriptions', 'current_period_start'),
       ('subscriptions', 'current_period_end'),
+      ('subscriptions', 'trial_started_at'),
+      ('subscriptions', 'trial_ends_at'),
+      ('subscriptions', 'next_billing_at'),
+      ('subscriptions', 'cancel_at'),
       ('subscriptions', 'razorpay_customer_id'),
+      ('subscriptions', 'razorpay_plan_id'),
       ('subscriptions', 'razorpay_subscription_id'),
       ('subscriptions', 'razorpay_payment_id'),
       ('subscriptions', 'created_at'),
@@ -310,7 +451,59 @@ as $$
       ('admin_audit_logs', 'metadata'),
       ('admin_audit_logs', 'ip_address'),
       ('admin_audit_logs', 'user_agent'),
-      ('admin_audit_logs', 'created_at')
+      ('admin_audit_logs', 'created_at'),
+      ('subscription_payments', 'id'),
+      ('subscription_payments', 'user_id'),
+      ('subscription_payments', 'plan'),
+      ('subscription_payments', 'billing_cycle'),
+      ('subscription_payments', 'amount'),
+      ('subscription_payments', 'currency'),
+      ('subscription_payments', 'status'),
+      ('subscription_payments', 'razorpay_subscription_id'),
+      ('subscription_payments', 'razorpay_payment_id'),
+      ('subscription_payments', 'paid_at'),
+      ('subscription_payments', 'created_at'),
+      ('billing_invoices', 'id'),
+      ('billing_invoices', 'user_id'),
+      ('billing_invoices', 'invoice_number'),
+      ('billing_invoices', 'plan'),
+      ('billing_invoices', 'billing_cycle'),
+      ('billing_invoices', 'amount'),
+      ('billing_invoices', 'currency'),
+      ('billing_invoices', 'status'),
+      ('billing_invoices', 'razorpay_payment_id'),
+      ('billing_invoices', 'invoice_url'),
+      ('billing_invoices', 'issued_at'),
+      ('billing_invoices', 'due_at'),
+      ('billing_invoices', 'paid_at'),
+      ('billing_invoices', 'created_at'),
+      ('feedback_submissions', 'id'),
+      ('feedback_submissions', 'user_id'),
+      ('feedback_submissions', 'name'),
+      ('feedback_submissions', 'email'),
+      ('feedback_submissions', 'category'),
+      ('feedback_submissions', 'message'),
+      ('feedback_submissions', 'screenshot_path'),
+      ('feedback_submissions', 'created_at'),
+      ('support_tickets', 'id'),
+      ('support_tickets', 'user_id'),
+      ('support_tickets', 'name'),
+      ('support_tickets', 'email'),
+      ('support_tickets', 'category'),
+      ('support_tickets', 'priority'),
+      ('support_tickets', 'subject'),
+      ('support_tickets', 'message'),
+      ('support_tickets', 'status'),
+      ('support_tickets', 'page_url'),
+      ('support_tickets', 'browser_info'),
+      ('support_tickets', 'device_info'),
+      ('support_tickets', 'screenshot_path'),
+      ('support_tickets', 'internal_reply'),
+      ('support_tickets', 'replied_by'),
+      ('support_tickets', 'replied_at'),
+      ('support_tickets', 'resolved_at'),
+      ('support_tickets', 'created_at'),
+      ('support_tickets', 'updated_at')
   )
   select required.req_table, required.req_column
   from required
@@ -330,6 +523,9 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  trial_start timestamptz := now();
+  trial_end timestamptz := now() + interval '14 days';
 begin
   insert into public.profiles (
     id,
@@ -351,7 +547,7 @@ begin
     new.raw_user_meta_data->>'avatar_url',
     'admin',
     'starter',
-    'active'
+    'trial'
   )
   on conflict (id) do update
     set email = excluded.email,
@@ -367,15 +563,23 @@ begin
     status,
     billing_cycle,
     ai_limit,
-    ai_used
+    ai_used,
+    trial_started_at,
+    trial_ends_at,
+    current_period_start,
+    current_period_end
   )
   values (
     new.id,
     'starter',
-    'active',
+    'trial',
     'monthly',
     20,
-    0
+    0,
+    trial_start,
+    trial_end,
+    trial_start,
+    trial_end
   )
   on conflict (user_id) do nothing;
 

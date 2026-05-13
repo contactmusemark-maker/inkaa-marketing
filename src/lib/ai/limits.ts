@@ -1,3 +1,4 @@
+import { getTrialPeriod, resolveSubscriptionStatus } from '@/lib/billing';
 import { supabaseFetch } from '@/lib/supabase';
 
 export type AIPlan = 'Starter' | 'Pro' | 'Agency';
@@ -26,6 +27,8 @@ type SubscriptionRow = {
   ai_used: number | null;
   current_period_start: string | null;
   current_period_end: string | null;
+  trial_started_at?: string | null;
+  trial_ends_at?: string | null;
 };
 
 const MONTHLY_LIMITS: Record<AIPlan, number | null> = {
@@ -68,19 +71,20 @@ function toLimitStatus(row: SubscriptionRow): AILimitStatus {
   const limit = row.ai_limit ?? MONTHLY_LIMITS[plan];
   const used = row.ai_used ?? 0;
   const remaining = limit === null ? null : Math.max(0, limit - used);
-  const active = ['active', 'trial'].includes(row.status);
+  const status = resolveSubscriptionStatus(row.status, row.trial_ends_at);
+  const active = ['active', 'trial'].includes(status);
 
   return {
     subscriptionId: row.id,
     plan,
-    status: row.status,
+    status,
     billingCycle: normalizeBillingCycle(row.billing_cycle),
     used,
     limit,
     remaining,
     allowed: active && (limit === null || used < limit),
     resetAt: row.current_period_end || startOfNextMonth().toISOString(),
-    upgradeRequired: active && limit !== null && used >= limit,
+    upgradeRequired: !active || (active && limit !== null && used >= limit),
   };
 }
 
@@ -90,7 +94,7 @@ function starterFallbackStatus(): AILimitStatus {
   return {
     subscriptionId: null,
     plan: 'Starter',
-    status: 'active',
+    status: 'trial',
     billingCycle: 'monthly',
     used: 0,
     limit,
@@ -112,6 +116,7 @@ async function fetchSubscription(token: string, userId: string) {
 
 async function createSubscription(token: string, userId: string, plan?: string | null) {
   const normalizedPlan = normalizeAIPlan(plan);
+  const trial = getTrialPeriod();
   const rows = await supabaseFetch<SubscriptionRow[]>(
     '/rest/v1/subscriptions?on_conflict=user_id&select=*',
     {
@@ -121,12 +126,14 @@ async function createSubscription(token: string, userId: string, plan?: string |
       body: JSON.stringify({
         user_id: userId,
         plan: toPlanValue(normalizedPlan),
-        status: 'active',
+        status: 'trial',
         billing_cycle: 'monthly',
         ai_limit: MONTHLY_LIMITS[normalizedPlan],
         ai_used: 0,
-        current_period_start: startOfCurrentMonth().toISOString(),
-        current_period_end: startOfNextMonth().toISOString(),
+        trial_started_at: trial.trialStart.toISOString(),
+        trial_ends_at: trial.trialEnd.toISOString(),
+        current_period_start: trial.trialStart.toISOString(),
+        current_period_end: trial.trialEnd.toISOString(),
       }),
     }
   );
